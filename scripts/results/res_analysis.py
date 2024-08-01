@@ -125,18 +125,18 @@ def scatter_with_avg_plot(GT, difft):
 
 
 def box_plot(data, offset):
-    box(data[0], offset, "r")
-    box(data[1], -offset, "b")
+    box(data[0], offset, "green")
+    box(data[1], -offset, "blue")
 
-    red_patch = mpatches.Patch(color="red", label="Gumtree")
+    green_patch = mpatches.Patch(color="green", label="Gumtree")
     blue_patch = mpatches.Patch(color="blue", label="difftastic")
-    plt.legend(handles=[red_patch, blue_patch])
+    plt.legend(handles=[green_patch, blue_patch])
 
     x = [1,2,3,4,5,6,7,8,9,10]
     plt.ylabel("edit actions")
     plt.xlabel("# of mutations")
     plt.xticks(x, labels=x)
-    plt.title("Edit Script Lengths for Gumtree and Difftastic")
+    plt.title("Edit Distances")
     plt.show()
 
 
@@ -148,67 +148,76 @@ def box(data, offset, color):
     
     x = [x - offset for x in [1,2,3,4,5,6,7,8,9,10]]
    
-    plt.boxplot(d, widths=0.25, patch_artist=True,
+    plt.boxplot(d, widths=0.27, patch_artist=True,
         positions=x,
-        showmeans=False, showfliers=False,
-        medianprops={"color": "white", "linewidth": 0.25},
-        boxprops={"facecolor":  color, "edgecolor": "white",
-                  "linewidth": 0.2},
-        whiskerprops={"color": color, "linewidth": 0.25},
-        capprops={"color": color, "linewidth": 0.25})
+        showmeans=True, showfliers=False,
+        medianprops={"color": "white", "linewidth": 1},
+        boxprops={"facecolor":  color, "edgecolor": "black",
+                  "linewidth": 0.25},
+        whiskerprops={"color": color, "linewidth": 1},
+        meanprops={"markerfacecolor": color, "markeredgecolor": "black"},
+        capprops={"color": color, "linewidth": 1})
 
 
-def bar_by_mut_plot(data, offset, oper):
+def bar_by_mut_plot(data, offset, oper, title):
     
     fig, ax = plt.subplots(layout='constrained')
 
-    bar(data[0], -offset, "r", ax, oper)
-    bar(data[1], offset, "b", ax, oper)
+    bar(data[0], -offset, "green", ax, oper)
+    bar(data[1], offset, "blue", ax, oper)
 
-    red_patch = mpatches.Patch(color="r", label="Gumtree")
+    red_patch = mpatches.Patch(color="lime", label="Gumtree")
     blue_patch = mpatches.Patch(color="b", label="difftastic")
     plt.legend(handles=[red_patch, blue_patch])
     
-    plt.title("Edit Distance per Mutation Operator (5/10 mutations)")
+    plt.title(title)
     plt.show()
 
+
 def bar(data, offset, color, subplot, oper):  
-    d = []
+    #greens = ["darkgreen", "green", "forestgreen", "seagreen", "lime", "lawngreen", "lightgreen", "chartreuse", "greenyellow", "springgreen"]
+    greens = ['#173d00','#225009','#2e6413','#3a781e','#478d29','#53a334','#60b940','#6cd04c','#79e759','#85ff66']
+    #blues= ["navy", "midnightblue", "darkblue", "mediumblue", "blue","royalblue",  "deepskyblue", "turquoise","cyan", "paleturquoise"]
+    blues = ['#140052','#071f70','#003b8b','#0056a2','#0071b6','#008dca','#00aada','#0bc6e8','#4ae3f4','#75ffff']
+
+    colors = "none"
+    if color == "blue":
+        colors = blues
+    elif color == "green":
+        colors = greens
+
+    x = np.arange(len(oper))
+    n = 0
+    for key in oper:
+        plt_data = np.around(data[key], 2)
+        for i in range(len(plt_data)-1, -1, -1):
+            subplot.bar(x = x[n] + offset, width =  0.25, height = plt_data[i], color = colors[i])
+        n += 1
+    subplot.set_xticks(x, oper)
+    
+
+def calc_corr(data):
+    x = [1,2,3,4,5,6,7,8,9,10]
+    count = [0 for _ in range(10)]
+    
+    d = [0 for _ in range(10)]
     for key in data.keys():
-        if key in oper:
-            if len(data[key]) == 10:
-                mut_res = [key, round(data[key][4], 1), round(data[key][9], 1)]
-                d.append(mut_res)
-            elif len(data[key]) >= 5:
-                mut_res = [key, round(data[key][4], 1), 0]
-                d.append(mut_res)
-            else:
-                mut_res = [key, 0, 0]
-                d.append(mut_res)
+        for i in range(len(data[key])):
+            d[i] += data[key][i]
+            count[i] += 1
+    
+    res = [i / j for i, j in zip(d, count)]
 
-    d.sort()
-    x = np.arange(len(d))
-    xlabels = [l[0] for l in d]
-    y5 = [l[1] for l in d]
-    y10 = [l[2] for l in d]
-
-    c2 = ''
-    if color == 'r':
-        c2 = 'orange'
-    else:
-        c2 = "c"
-
-    bar = subplot.bar(x = x + offset, width =  0.25, height = y10, color = color)#, label = "10 mutations")
-    subplot.bar(x = x + offset , width =  0.25, height = y5, color = c2) #, label = "5 mutations")
-    #subplot.bar_label(bar, padding=3)
-    subplot.set_xticks(x, xlabels)
+    r = np.corrcoef(x, res)
+    r2 = np.polyfit(x, res, 1)
+    print("Slope: ", r2, "\nCorrelation:", r, '\n')        
 
 
 if __name__ ==  '__main__':
     num_mut = 10
     pickles = load_pickles()
-    #outliers = ["ICM", "ACM", "LSC", "CCD", "CBD", "ORFD", "OLFD", "CCD", "EHC"]
-    #remove_mut_operators(pickles, outliers)
+
+    remove_mut_operators(pickles, ["AVR","SCEC"])
 
     GT_res_dict = setup(num_mut)
     analyze_diffs(pickles["GT"], GT_res_dict, num_mut)
@@ -222,15 +231,34 @@ if __name__ ==  '__main__':
 
     #scatter_with_avg_plot(GT_res_dict, difft_res_dict)
     box_plot((GT_res_dict["mut_res"], difft_res_dict["mut_res"]), 0.15)
+   
 
+    x = [1,2,3,4,5,6,7,8,9,10]
+    r = np.corrcoef(x, GT_res_dict["res"])
+    r2 = np.polyfit(x, GT_res_dict["res"], 1)
+    print("Gumtree slope: ", r2, "\nGumtree correlation:", r, '\n')
+    calc_corr( GT_res_dict["mut_res"])
 
+    
+    r = np.corrcoef(x, difft_res_dict["res"])
+    r2 = np.polyfit(x, difft_res_dict["res"], 1)
+    print("difft slope: ", r2, "\ndifft correlation:", r)
+    calc_corr( difft_res_dict["mut_res"])
+   
+    
+
+    # removed operators due to errors in testing: "AVR",  "SCEC"
     opers = []
-    opers.append( ["BLR", "HLR", "ILR", "SLR", "AVR"])
-    opers.append( ["AOR", "BOR", "UORD", "DOD", "ECS", "MCR", "VUR", "ICM"])
-    opers.append( ["CBD", "CSC", "EED", "EHC", "OLFD", "ORFD", "CCD", "RSD"])
-    opers.append( ["ACM", "LCS", "MOD", "MOI", "MOC", "MOR", "RVS", "SCEC"])
-    opers.append( ["BCRD","ER","SKI","SKD","DLR","ETR","FVR","GVR","OKD","SFR","TOR","VVR"])
-    for oper in opers:
-        bar_by_mut_plot((GT_res_dict["mut_res"], difft_res_dict["mut_res"]), 0.15, oper)
+    opers.append( ["BLR", "HLR", "ILR", "SLR"])
+    opers.append( ["AOR", "BOR", "DOD", "ECS", "ICM", "MCR", "UORD","VUR"])
+    opers.append( ["CBD", "CCD", "CSC", "EED", "EHC", "OLFD", "ORFD", "RSD"])
+    opers.append( ["ACM", "LSC", "MOC", "MOD", "MOI", "MOR", "RVS"])
+    opers.append( ["BCRD","DLR","ER","ETR","FVR","GVR","PKD","SFR","SKD","SKI","TOR","VVR"])
+    titles = ["Mutated Literals", "Mutated Operators & Type Specifications", "Mutated Code Blocks", "Mutated Arguments & Modifers", "Other Mutations"]
+
+    for i in range(len(opers)):
+        bar_by_mut_plot((GT_res_dict["mut_res"], difft_res_dict["mut_res"]), 0.15, opers[i], titles[i])
+    
+
     
     
